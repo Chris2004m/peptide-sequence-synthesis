@@ -2,7 +2,7 @@
 
 # Peptide Sequence Synthesis
 
-This project provides a robust, reproducible tool for generating large, high-quality reference peptide sets for neoantigen analysis and benchmarking with pVACtools (notably pVACbind).
+This project provides a robust, reproducible tool for generating large, high-quality reference peptide sets
 
 ## Features
 
@@ -21,7 +21,6 @@ This project provides a robust, reproducible tool for generating large, high-qua
 - [PySimpleGUI](https://pysimplegui.readthedocs.io/)
 - [transformers](https://huggingface.co/docs/transformers/index)
 - [torch](https://pytorch.org/)
-- (Optional) [Biopython](https://biopython.org/) if you want to extend for peptide property analysis
 
 Install dependencies with:
 ```bash
@@ -67,16 +66,7 @@ Follow the prompts to select generation mode, parameters, and output file.
    git push -u origin main
    ```
 
-## License
-
-[MIT License](LICENSE) or as specified by your lab.
-
 ## Acknowledgements
 
-- [pVACtools](https://pvactools.readthedocs.io/)
 - [ProtGPT2](https://huggingface.co/nferruz/ProtGPT2)
 - [PySimpleGUI](https://pysimplegui.readthedocs.io/)
-
----
-
-*For questions or contributions, please open an issue or pull request on GitHub.*
