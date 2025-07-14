@@ -2,7 +2,7 @@
 
 # Peptide Sequence Synthesis
 
-This project provides a robust, reproducible tool for generating large, high-quality reference peptide sets
+A tool for generating reference peptide sets
 
 ## Features
 
