@@ -42,7 +42,7 @@ def sample_peptides_from_fasta(fasta_path: Path, length: int, count: int) -> Lis
         peptides.append(random.choice(all_subseqs))
     return peptides[:count]
 
-def generate_protgpt2_peptides(length: int, count: int) -> List[str]:
+def generate_protgpt2_peptides(length: int, count: int, temperature: float = 1.0, top_k: int = 950, top_p: float = 0.9, repetition_penalty: float = 1.2) -> List[str]:
     try:
         from transformers import pipeline
     except ImportError:
@@ -53,8 +53,9 @@ def generate_protgpt2_peptides(length: int, count: int) -> List[str]:
     protgpt2 = pipeline('text-generation', model="nferruz/ProtGPT2", framework="pt")
     peptides = []
     tries = 0
+    batch_size = min(50, count)  # Generate more peptides per batch for efficiency
     while len(peptides) < count and tries < count * 10:
-        sequences = protgpt2("<|endoftext|>", max_length=max_length, do_sample=True, top_k=950, repetition_penalty=1.2, num_return_sequences=min(count - len(peptides), 10), eos_token_id=0)
+        sequences = protgpt2("<|endoftext|>", max_length=max_length, do_sample=True, top_k=top_k, top_p=top_p, temperature=temperature, repetition_penalty=repetition_penalty, num_return_sequences=min(count - len(peptides), batch_size), eos_token_id=0)
         if not sequences or not hasattr(sequences, '__iter__'):
             tries += 1
             continue
@@ -86,7 +87,32 @@ def main():
     parser.add_argument('--fasta_file', type=Path, help='Path to reference FASTA file (required if source is fasta)')
     parser.add_argument('--output', type=Path, default=Path('control_peptides.fasta'), help='Output FASTA file')
     parser.add_argument('--seed', type=int, help='Random seed for reproducibility (not used for protgpt2)')
+    parser.add_argument('--temperature', type=float, default=1.0, help='Temperature for ProtGPT2 generation (higher = more random)')
+    parser.add_argument('--top_k', type=int, default=950, help='Top-k sampling for ProtGPT2')
+    parser.add_argument('--top_p', type=float, default=0.9, help='Top-p (nucleus) sampling for ProtGPT2')
+    parser.add_argument('--repetition_penalty', type=float, default=1.2, help='Repetition penalty for ProtGPT2')
     args = parser.parse_args()
+
+    # Input validation
+    if args.length < 1 or args.length > 50:
+        print('Error: Peptide length must be between 1 and 50 amino acids', file=sys.stderr)
+        sys.exit(1)
+    if args.count < 1 or args.count > 10000000:
+        print('Error: Count must be between 1 and 10,000,000 peptides', file=sys.stderr)
+        sys.exit(1)
+    if args.source == 'protgpt2':
+        if args.temperature <= 0:
+            print('Error: Temperature must be positive', file=sys.stderr)
+            sys.exit(1)
+        if args.top_k < 1:
+            print('Error: Top-k must be at least 1', file=sys.stderr)
+            sys.exit(1)
+        if args.top_p <= 0 or args.top_p > 1:
+            print('Error: Top-p must be between 0 and 1', file=sys.stderr)
+            sys.exit(1)
+        if args.repetition_penalty <= 0:
+            print('Error: Repetition penalty must be positive', file=sys.stderr)
+            sys.exit(1)
 
     if args.seed is not None and args.source != 'protgpt2':
         random.seed(args.seed)
@@ -99,7 +125,7 @@ def main():
             sys.exit(1)
         peptides = sample_peptides_from_fasta(args.fasta_file, args.length, args.count)
     elif args.source == 'protgpt2':
-        peptides = generate_protgpt2_peptides(args.length, args.count)
+        peptides = generate_protgpt2_peptides(args.length, args.count, args.temperature, args.top_k, args.top_p, args.repetition_penalty)
     else:
         print(f"Unknown source: {args.source}", file=sys.stderr)
         sys.exit(1)
