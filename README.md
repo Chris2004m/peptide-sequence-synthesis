@@ -2,7 +2,7 @@
 
 # Peptide Sequence Synthesis
 
-This project provides a robust, reproducible tool for generating large, high-quality reference peptide sets
+A tool for generating reference peptide sets
 
 ## Features
 
@@ -51,30 +51,6 @@ python generate_control_peptides.py --source llm --llm_model esm2 --length 15 --
 python peptide_gui.py
 ```
 Follow the prompts to select generation mode, parameters, and output file.
-
-## Reproducibility
-
-- All code and results should be managed in a git repository.
-- Document all parameters used for each run.
-- For large-scale runs, consider using a virtual environment and requirements.txt for consistent environments.
-
-## Version Control
-
-1. Initialize git:
-   ```bash
-   git init
-   ```
-2. Add files and commit:
-   ```bash
-   git add .
-   git commit -m "Initial commit: peptide generator and GUI"
-   ```
-3. Create a GitHub repo and push:
-   ```bash
-   git remote add origin https://github.com/yourusername/peptide-sequence-synthesis.git
-   git branch -M main
-   git push -u origin main
-   ```
 
 ## Acknowledgements
 
