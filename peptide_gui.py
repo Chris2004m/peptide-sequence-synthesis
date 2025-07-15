@@ -6,11 +6,12 @@ import os
 
 # Layout for the GUI
 layout = [
-    [sg.Text('Peptide Source:'), sg.Combo(['random', 'fasta', 'protgpt2'], default_value='random', key='-SOURCE-', enable_events=True)],
+    [sg.Text('Peptide Source:'), sg.Combo(['random', 'fasta', 'llm'], default_value='random', key='-SOURCE-', enable_events=True)],
+    [sg.Text('LLM Model:'), sg.Combo(['protgpt2', 'esm2'], default_value='protgpt2', key='-LLM_MODEL-', enable_events=True)],
     [sg.Text('Peptide Length:'), sg.Input(key='-LENGTH-', size=(5,1)), sg.Text('Count:'), sg.Input(key='-COUNT-', size=(5,1))],
     [sg.Text('FASTA File:'), sg.Input(key='-FASTA-', size=(30,1)), sg.FileBrowse(file_types=(('FASTA Files', '*.fasta *.faa'),), key='-FASTA_BROWSE-')],
     [sg.Text('Output File:'), sg.Input(key='-OUTPUT-', size=(30,1)), sg.FileSaveAs(file_types=(('FASTA Files', '*.fasta'),), key='-OUTPUT_BROWSE-')],
-    [sg.Frame('ProtGPT2 Options (optional)', [
+    [sg.Frame('LLM Options (optional)', [
         [sg.Text('Temperature:'), sg.Input(key='-TEMP-', size=(5,1)),
          sg.Text('Top-k:'), sg.Input(key='-TOPK-', size=(5,1)),
          sg.Text('Top-p:'), sg.Input(key='-TOPP-', size=(5,1)),
@@ -27,14 +28,20 @@ while True:
     if event in (sg.WIN_CLOSED, 'Exit'):
         break
 
-    # Enable/disable FASTA file input based on source
+    # Enable/disable inputs based on source
     if event == '-SOURCE-':
         if values['-SOURCE-'] == 'fasta':
             window['-FASTA-'].update(disabled=False)
             window['-FASTA_BROWSE-'].update(disabled=False)
+            window['-LLM_MODEL-'].update(disabled=True)
+        elif values['-SOURCE-'] == 'llm':
+            window['-FASTA-'].update(disabled=True)
+            window['-FASTA_BROWSE-'].update(disabled=True)
+            window['-LLM_MODEL-'].update(disabled=False)
         else:
             window['-FASTA-'].update(disabled=True)
             window['-FASTA_BROWSE-'].update(disabled=True)
+            window['-LLM_MODEL-'].update(disabled=True)
 
     if event == 'Generate':
         source = values['-SOURCE-']
@@ -42,6 +49,7 @@ while True:
         count = values['-COUNT-']
         fasta_file = values['-FASTA-']
         output_file = values['-OUTPUT-']
+        llm_model = values['-LLM_MODEL-']
         temp = values['-TEMP-']
         topk = values['-TOPK-']
         topp = values['-TOPP-']
@@ -51,7 +59,8 @@ while True:
         cmd = [sys.executable, 'generate_control_peptides.py', '--length', length, '--count', count, '--source', source, '--output', output_file]
         if source == 'fasta' and fasta_file:
             cmd += ['--fasta_file', fasta_file]
-        if source == 'protgpt2':
+        if source == 'llm':
+            cmd += ['--llm_model', llm_model]
             if temp:
                 cmd += ['--temperature', temp]
             if topk:
