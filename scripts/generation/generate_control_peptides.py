@@ -87,6 +87,9 @@ def generate_llm_peptides(length: int, count: int, model_name: str = "protgpt2",
                 pep = ''.join([c for c in gen_text if c in AMINO_ACIDS])
                 if len(pep) == length:
                     peptides.append(pep)
+                    # Real-time progress output every 100 accepted peptides or at the end
+                    if len(peptides) % 100 == 0 or len(peptides) == count:
+                        print(f"[LLM] Generated {len(peptides)}/{count} valid peptides...", flush=True)
             tries += 1
     else:
         # ESM-2 approach using masked language modeling
@@ -160,21 +163,23 @@ def generate_llm_peptides(length: int, count: int, model_name: str = "protgpt2",
                         final_peptide = "".join(generated_sequence)
                         
                         # Ensure exact length
+                        # Ensure exact length and record peptide
                         if len(final_peptide) >= length:
                             final_peptide = final_peptide[:length]
-                        elif len(final_peptide) < length:
-                            # Pad with random amino acids if too short
+                        else:
                             final_peptide += "".join(random.choices(AMINO_ACIDS, k=length - len(final_peptide)))
-                        
+
                         if len(final_peptide) == length:
                             peptides.append(final_peptide)
+                            if len(peptides) % 100 == 0 or len(peptides) == count:
+                                print(f"[LLM] Generated {len(peptides)}/{count} valid peptides...", flush=True)
             
             except Exception as e:
-                print(f"Warning: ESM-2 generation error: {e}", file=sys.stderr)
-                # Fallback to random generation for this attempt
+                print(f"[LLM] Warning: ESM-2 generation error: {e}", file=sys.stderr)
                 fallback_peptide = "".join(random.choices(AMINO_ACIDS, k=length))
                 peptides.append(fallback_peptide)
-            
+                if len(peptides) % 100 == 0 or len(peptides) == count:
+                    print(f"[LLM] Generated {len(peptides)}/{count} valid peptides...", flush=True)
             tries += 1
     if len(peptides) < count:
         print(f"Warning: Only generated {len(peptides)} peptides of requested {count} with exact length {length}.", file=sys.stderr)

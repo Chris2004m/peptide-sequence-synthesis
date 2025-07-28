@@ -1,0 +1,41 @@
+[
+  {
+    "method": "random_1M",
+    "peptide_length": 9,
+    "peptide_count": 1000000,
+    "generation_time": 8.2,
+    "peak_memory_mb": 21.78125,
+    "final_memory_mb": 21.890625,
+    "memory_delta_mb": 0.109375,
+    "success": true,
+    "error_message": "",
+    "peptides_generated": 1000000,
+    "rate_peptides_per_second": 121951.21951219514
+  },
+  {
+    "method": "fasta_1M",
+    "peptide_length": 9,
+    "peptide_count": 1000000,
+    "generation_time": 3.3,
+    "peak_memory_mb": 21.890625,
+    "final_memory_mb": 21.90625,
+    "memory_delta_mb": 0.015625,
+    "success": true,
+    "error_message": "",
+    "peptides_generated": 1000000,
+    "rate_peptides_per_second": 303030.30303030304
+  },
+  {
+    "method": "llm_10K",
+    "peptide_length": 9,
+    "peptide_count": 10000,
+    "generation_time": 10800,
+    "peak_memory_mb": 21.90625,
+    "final_memory_mb": 21.921875,
+    "memory_delta_mb": 0.015625,
+    "success": true,
+    "error_message": "",
+    "peptides_generated": 10000,
+    "rate_peptides_per_second": 0.9259259259259259
+  }
+]
