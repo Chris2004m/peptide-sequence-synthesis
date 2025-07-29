@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import gzip
 import random
 import sys
 from pathlib import Path
@@ -11,9 +12,17 @@ def generate_random_peptides(length: int, count: int) -> List[str]:
     return ["".join(random.choices(AMINO_ACIDS, k=length)) for _ in range(count)]
 
 def parse_fasta_sequences(fasta_path: Path) -> List[str]:
+    """Parse FASTA sequences from plain text or gzipped files."""
     sequences = []
     seq = []
-    with open(fasta_path, 'r') as f:
+    
+    # Determine if file is gzipped based on extension
+    if str(fasta_path).endswith('.gz'):
+        open_func = lambda: gzip.open(fasta_path, 'rt')  # 'rt' for text mode
+    else:
+        open_func = lambda: open(fasta_path, 'r')
+    
+    with open_func() as f:
         for line in f:
             line = line.strip()
             if not line:
