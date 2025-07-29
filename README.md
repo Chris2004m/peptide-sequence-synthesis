@@ -27,6 +27,9 @@ Install dependencies with:
 pip install -r requirements.txt
 ```
 
+> **Note:** You do **not** need to install pVACtools or IEDB locally. All pvacbind predictions are executed inside the official Docker container [`griffithlab/pvactools:latest`](https://hub.docker.com/r/griffithlab/pvactools/) via `scripts/tools/docker_pvactools_runner.py`, ensuring consistent dependencies across systems.
+```
+
 ## Usage
 
 ### Command Line
