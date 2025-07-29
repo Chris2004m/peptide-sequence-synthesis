@@ -1,5 +1,3 @@
-# peptide-sequence-synthesis
-
 # Peptide Sequence Synthesis
 
 A tool for generating reference peptide sets
