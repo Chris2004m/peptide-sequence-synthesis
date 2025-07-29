@@ -10,3 +10,10 @@ test.fasta
 process-todos.md
 .claude
 .codebuddy
+
+# Generated pVACbind outputs
+results/pvacbind*/
+
+# Generated analysis figures
+figures/
+
