@@ -27,6 +27,5 @@ RUN pip install --upgrade pip \
 # Copy rest of the project
 COPY . .
 
-# Default entrypoint shows help for the generator script
-ENTRYPOINT ["python", "generate_control_peptides.py"]
-CMD ["--help"]
+# Default command opens bash shell
+CMD ["/bin/bash"]

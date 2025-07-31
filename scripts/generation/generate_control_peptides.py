@@ -39,19 +39,22 @@ def parse_fasta_sequences(fasta_path: Path) -> List[str]:
 
 def sample_peptides_from_fasta(fasta_path: Path, length: int, count: int) -> List[str]:
     sequences = parse_fasta_sequences(fasta_path)
-    all_subseqs = []
+    all_subseqs = set()  # Use set to automatically collapse duplicates
     for seq in sequences:
         if len(seq) >= length:
             for i in range(len(seq) - length + 1):
-                all_subseqs.append(seq[i:i+length])
+                all_subseqs.add(seq[i:i+length])
     if not all_subseqs:
         raise ValueError(f"No subsequences of length {length} found in {fasta_path}")
-    peptides = random.sample(all_subseqs, k=min(count, len(all_subseqs)))
+    
+    # Convert set back to list for sampling
+    unique_subseqs = list(all_subseqs)
+    peptides = random.sample(unique_subseqs, k=min(count, len(unique_subseqs)))
     while len(peptides) < count:
-        peptides.append(random.choice(all_subseqs))
+        peptides.append(random.choice(unique_subseqs))
     return peptides[:count]
 
-def generate_llm_peptides(length: int, count: int, model_name: str = "protgpt2", temperature: float = 1.0, top_k: int = 950, top_p: float = 0.9, repetition_penalty: float = 1.2) -> List[str]:
+def generate_llm_peptides(length: int, count: int, model_name: str = "protgpt2", top_k: int = 950, top_p: float = 0.9, repetition_penalty: float = 1.2) -> List[str]:
     try:
         from transformers import pipeline, AutoTokenizer, AutoModel, AutoModelForMaskedLM
         import torch
@@ -82,7 +85,7 @@ def generate_llm_peptides(length: int, count: int, model_name: str = "protgpt2",
         # ProtGPT2 pipeline approach
         llm_pipeline = pipeline('text-generation', model=model_id, framework="pt")
         while len(peptides) < count and tries < count * 10:
-            sequences = llm_pipeline(prompt, max_length=max_length, do_sample=True, top_k=top_k, top_p=top_p, temperature=temperature, repetition_penalty=repetition_penalty, num_return_sequences=min(count - len(peptides), batch_size), eos_token_id=0)
+            sequences = llm_pipeline(prompt, max_length=max_length, do_sample=True, top_k=top_k, top_p=top_p, temperature=1.0, repetition_penalty=repetition_penalty, num_return_sequences=min(count - len(peptides), batch_size), eos_token_id=0)
             if not sequences or not hasattr(sequences, '__iter__'):
                 tries += 1
                 continue
@@ -125,8 +128,8 @@ def generate_llm_peptides(length: int, count: int, model_name: str = "protgpt2",
                         outputs = model(**inputs)
                         predictions = outputs.logits
                         
-                        # Apply temperature
-                        predictions = predictions / temperature
+                        # Apply fixed temperature
+                        predictions = predictions / 1.0
                         
                         # Find mask positions and generate amino acids
                         mask_token_id = tokenizer.mask_token_id
@@ -208,7 +211,7 @@ def main():
     parser.add_argument('--fasta_file', type=Path, help='Path to reference FASTA file (required if source is fasta)')
     parser.add_argument('--output', type=Path, default=Path('control_peptides.fasta'), help='Output FASTA file')
     parser.add_argument('--seed', type=int, help='Random seed for reproducibility (not used for llm models)')
-    parser.add_argument('--temperature', type=float, default=1.0, help='Temperature for LLM generation (higher = more random)')
+
     parser.add_argument('--top_k', type=int, default=950, help='Top-k sampling for LLM')
     parser.add_argument('--top_p', type=float, default=0.9, help='Top-p (nucleus) sampling for LLM')
     parser.add_argument('--repetition_penalty', type=float, default=1.2, help='Repetition penalty for LLM')
@@ -222,9 +225,7 @@ def main():
         print('Error: Count must be between 1 and 10,000,000 peptides', file=sys.stderr)
         sys.exit(1)
     if args.source == 'llm':
-        if args.temperature <= 0:
-            print('Error: Temperature must be positive', file=sys.stderr)
-            sys.exit(1)
+
         if args.top_k < 1:
             print('Error: Top-k must be at least 1', file=sys.stderr)
             sys.exit(1)
@@ -246,7 +247,7 @@ def main():
             sys.exit(1)
         peptides = sample_peptides_from_fasta(args.fasta_file, args.length, args.count)
     elif args.source == 'llm':
-        peptides = generate_llm_peptides(args.length, args.count, args.llm_model, args.temperature, args.top_k, args.top_p, args.repetition_penalty)
+        peptides = generate_llm_peptides(args.length, args.count, args.llm_model, args.top_k, args.top_p, args.repetition_penalty)
     else:
         print(f"Unknown source: {args.source}", file=sys.stderr)
         sys.exit(1)
