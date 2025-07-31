@@ -56,6 +56,21 @@ Generate 100 9-mer peptides using ESM2 (direct generation):
 python scripts/generation/generate_control_peptides.py --source llm --llm_model esm2 --length 9 --count 100 --output ESM2-9mer-100.fasta
 ```
 
+## Docker Usage
+
+Run the tool using Docker (no local setup required):
+
+```bash
+# Pull the latest image
+docker pull chris2004m/peptide-sequence-synthesis:latest
+
+# Run with Docker (interactive mode)
+docker run -it --rm -v $(pwd)/output:/app/output chris2004m/peptide-sequence-synthesis:latest
+
+# Inside the container, run any of the commands above, e.g.:
+python scripts/generation/generate_control_peptides.py --source random --length 9 --count 100 --output output/Random-9mer-100.fasta
+```
+
 ## Acknowledgements
 
 - [ProtGPT2](https://huggingface.co/nferruz/ProtGPT2)
