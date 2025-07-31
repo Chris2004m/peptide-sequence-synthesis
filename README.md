@@ -33,17 +33,21 @@ pip install -r requirements.txt
 ### Command Line
 
 ```bash
-# Random generation
-python generate_control_peptides.py --source random --length 9 --count 1000 --output peptides.fasta --seed 42
+# Random generation - Generate 1000 random 9-mer peptides
+python scripts/generation/generate_control_peptides.py --source random --length 9 --count 1000 --output Random-9mer-1000.fasta --seed 42
 
-# FASTA sampling
-python generate_control_peptides.py --source fasta --length 9 --count 1000 --fasta_file input.fasta --output peptides.fasta
+# FASTA sampling - Sample 1000 9-mer peptides from reference proteome
+python scripts/generation/generate_control_peptides.py --source fasta --length 9 --count 1000 --fasta_file data/protein.faa --output RefProteome-9mer-1000.fasta
 
-# LLM generation (ProtGPT2 - good for short peptides)
-python generate_control_peptides.py --source llm --llm_model protgpt2 --length 9 --count 100 --output peptides.fasta
+# ProtGPT2 generation - Interactive workflow to generate peptides from synthetic proteins
+python scripts/generation/generate_control_peptides.py --source llm --llm_model protgpt2 --length 9 --count 1000 --output ProtGPT2-9mer-1000.fasta
+# This will prompt you to either:
+# 1) Use an existing ProtGPT2-generated proteome, or
+# 2) Generate a new synthetic proteome using ProtGPT2
 
-# LLM generation (ESM-2 - better for longer peptides)
-python generate_control_peptides.py --source llm --llm_model esm2 --length 15 --count 100 --output peptides.fasta --temperature 1.2
+# Generate different peptide lengths with descriptive names
+python scripts/generation/generate_control_peptides.py --source random --length 8 --count 5000 --output Random-8mer-5000.fasta
+python scripts/generation/generate_control_peptides.py --source llm --llm_model protgpt2 --length 10 --count 2000 --output ProtGPT2-10mer-2000.fasta
 ```
 
 ### GUI
