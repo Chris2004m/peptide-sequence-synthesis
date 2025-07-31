@@ -19,7 +19,7 @@ A tool for generating reference peptide sets
 - Python 3.8+
 - [transformers](https://huggingface.co/docs/transformers/index)
 - [torch](https://pytorch.org/)
-- [tqdm](https://tqdm.github.io/) (for progress bars)
+- [tqdm](https://tqdm.github.io/)
 
 Install dependencies with:
 ```bash
