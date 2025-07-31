@@ -5,6 +5,8 @@ import random
 import sys
 from pathlib import Path
 from typing import List
+import numpy as np
+from tqdm import tqdm
 
 AMINO_ACIDS = "ACDEFGHIKLMNPQRSTVWY"
 
@@ -49,10 +51,14 @@ def sample_peptides_from_fasta(fasta_path: Path, length: int, count: int) -> Lis
     
     # Convert set back to list for sampling
     unique_subseqs = list(all_subseqs)
-    peptides = random.sample(unique_subseqs, k=min(count, len(unique_subseqs)))
-    while len(peptides) < count:
-        peptides.append(random.choice(unique_subseqs))
-    return peptides[:count]
+    
+    # Ensure sampling without replacement - if not enough unique peptides, inform user
+    if count > len(unique_subseqs):
+        print(f"Warning: Requested {count} peptides, but only {len(unique_subseqs)} unique peptides available. Returning all {len(unique_subseqs)} unique peptides.", file=sys.stderr)
+        return unique_subseqs
+    
+    # Sample without replacement
+    return random.sample(unique_subseqs, k=count)
 
 def generate_llm_peptides(length: int, count: int, model_name: str = "protgpt2", top_k: int = 950, top_p: float = 0.9, repetition_penalty: float = 1.2) -> List[str]:
     try:
@@ -197,6 +203,134 @@ def generate_llm_peptides(length: int, count: int, model_name: str = "protgpt2",
         print(f"Warning: Only generated {len(peptides)} peptides of requested {count} with exact length {length}.", file=sys.stderr)
     return peptides[:count]
 
+def generate_fake_proteome_lengths(num_proteins: int, reference_fasta_path: Path) -> List[int]:
+    """Generate protein lengths matching the distribution from a reference proteome."""
+    # Parse reference proteome to get length distribution
+    sequences = parse_fasta_sequences(reference_fasta_path)
+    reference_lengths = [len(seq) for seq in sequences]
+    
+    # Sample from the empirical distribution
+    sampled_lengths = np.random.choice(reference_lengths, size=num_proteins, replace=True)
+    return sampled_lengths.tolist()
+
+def get_user_input(prompt: str) -> str:
+    """Get user input with a prompt."""
+    return input(prompt).strip()
+
+def get_existing_proteome_path() -> Path:
+    """Interactive prompt to get existing proteome file path."""
+    while True:
+        path_str = get_user_input("Please provide the path to your ProtGPT2-generated proteome file: ")
+        # Strip quotes that users might add
+        path_str = path_str.strip('"\'')
+        path = Path(path_str)
+        if path.exists() and path.is_file():
+            return path
+        else:
+            print(f"Error: File '{path}' not found. Please try again.")
+
+def configure_proteome_generation():
+    """Interactive configuration for new proteome generation using ProtGPT2 only."""
+    print("\nConfiguring new ProtGPT2 proteome generation...")
+    print("This will generate completely synthetic proteins using ProtGPT2.")
+    
+    # Get number of proteins
+    while True:
+        try:
+            num_proteins = int(get_user_input("How many proteins should be generated? "))
+            if num_proteins > 0:
+                break
+            else:
+                print("Please enter a positive number.")
+        except ValueError:
+            print("Please enter a valid integer.")
+    
+    # Get protein length range
+    print("\nSpecify the protein length range:")
+    while True:
+        try:
+            min_len = int(get_user_input("Minimum protein length: "))
+            max_len = int(get_user_input("Maximum protein length: "))
+            if min_len > 0 and max_len >= min_len:
+                break
+            else:
+                print("Please ensure minimum > 0 and maximum >= minimum.")
+        except ValueError:
+            print("Please enter valid integers.")
+    
+    # Generate uniform random lengths in the specified range
+    target_lengths = [random.randint(min_len, max_len) for _ in range(num_proteins)]
+    
+    print(f"\nWill generate {num_proteins} proteins with lengths between {min_len}-{max_len} amino acids.")
+    return num_proteins, target_lengths
+
+def generate_fake_proteome(num_proteins: int, target_lengths: List[int], model_name: str = "protgpt2") -> List[str]:
+    """Generate a fake proteome with specified protein lengths using LLM."""
+    try:
+        from transformers import pipeline
+    except ImportError:
+        print("Error: transformers package is required for fake proteome generation. Please install with 'pip install transformers torch'", file=sys.stderr)
+        sys.exit(1)
+    
+    print(f"Generating {num_proteins} proteins using {model_name}...")
+    
+    if model_name.lower() == "protgpt2":
+        model_id = "nferruz/ProtGPT2"
+        llm_pipeline = pipeline('text-generation', model=model_id, framework="pt")
+        
+        proteins = []
+        # Use progress bar for protein generation
+        for i, target_length in enumerate(tqdm(target_lengths, desc="Generating proteins", unit="protein")):
+            
+            # Generate protein of approximately target length
+            max_tokens = max(10, target_length // 4)  # ProtGPT2 tokens are ~4 amino acids
+            tries = 0
+            protein = None
+            
+            while tries < 5:  # Try up to 5 times to get reasonable length
+                try:
+                    # Start with empty prompt to get natural protein start
+                    sequences = llm_pipeline(
+                        "", 
+                        max_length=max_tokens, 
+                        do_sample=True, 
+                        top_k=950, 
+                        top_p=0.9, 
+                        temperature=1.0, 
+                        repetition_penalty=1.2, 
+                        num_return_sequences=1,
+                        eos_token_id=0
+                    )
+                    
+                    if sequences and len(sequences) > 0:
+                        gen_text = sequences[0].get('generated_text', '')
+                        # Clean the sequence - keep only valid amino acids
+                        clean_seq = ''.join([c for c in gen_text.upper() if c in AMINO_ACIDS])
+                        
+                        if len(clean_seq) >= 50:  # Minimum reasonable protein length
+                            # Trim or extend to approximate target length
+                            if len(clean_seq) > target_length * 1.5:
+                                clean_seq = clean_seq[:target_length]
+                            protein = clean_seq
+                            break
+                
+                except Exception as e:
+                    print(f"Warning: Error generating protein {i+1}: {e}", file=sys.stderr)
+                
+                tries += 1
+            
+            # Fallback to random sequence if generation failed
+            if protein is None:
+                protein = ''.join(random.choices(AMINO_ACIDS, k=target_length))
+            
+            proteins.append(protein)
+        
+        return proteins
+    
+    else:
+        print(f"Error: Unsupported model '{model_name}' for proteome generation. Only protgpt2 is supported.", file=sys.stderr)
+        sys.exit(1)
+
 def write_fasta(peptides: List[str], output_path: Path, prefix: str = "peptide"):
     with open(output_path, 'w') as f:
         for i, pep in enumerate(peptides, 1):
@@ -247,7 +381,39 @@ def main():
             sys.exit(1)
         peptides = sample_peptides_from_fasta(args.fasta_file, args.length, args.count)
     elif args.source == 'llm':
-        peptides = generate_llm_peptides(args.length, args.count, args.llm_model, args.top_k, args.top_p, args.repetition_penalty)
+        # Interactive workflow for LLM-based peptide generation
+        print(f"\nGenerating {args.count} peptides of length {args.length} using LLM approach...")
+        print("This approach generates a fake proteome first, then samples peptides from it.")
+        
+        # Check if user has existing proteome
+        has_existing = get_user_input("\nDo you have an existing ProtGPT2-generated proteome file? (y/n): ").lower().startswith('y')
+        
+        if has_existing:
+            proteome_path = get_existing_proteome_path()
+            print(f"Using existing proteome: {proteome_path}")
+        else:
+            # Ask if user wants to generate new proteome
+            generate_new = get_user_input("Would you like to generate a new fake proteome? (y/n): ").lower().startswith('y')
+            
+            if not generate_new:
+                print("Cannot proceed without a proteome. Exiting.")
+                sys.exit(1)
+            
+            # Configure proteome generation (no reference needed)
+            num_proteins, target_lengths = configure_proteome_generation()
+            
+            # Generate the fake proteome
+            fake_proteins = generate_fake_proteome(num_proteins, target_lengths, args.llm_model)
+            
+            # Save the generated proteome
+            proteome_output = Path(f'fake_proteome_{num_proteins}proteins.fasta')
+            write_fasta(fake_proteins, proteome_output, prefix="protein")
+            print(f"\nGenerated fake proteome saved to: {proteome_output}")
+            proteome_path = proteome_output
+        
+        # Now sample peptides from the proteome using FASTA method
+        print(f"\nSampling {args.count} peptides from the proteome...")
+        peptides = sample_peptides_from_fasta(proteome_path, args.length, args.count)
     else:
         print(f"Unknown source: {args.source}", file=sys.stderr)
         sys.exit(1)
