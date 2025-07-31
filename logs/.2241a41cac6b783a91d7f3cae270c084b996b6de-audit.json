@@ -1,0 +1,20 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "/Users/chris/Desktop/Griffith Lab/Peptide Sequence Synthesis/logs/.2241a41cac6b783a91d7f3cae270c084b996b6de-audit.json",
+    "files": [
+        {
+            "date": 1753800742818,
+            "name": "/Users/chris/Desktop/Griffith Lab/Peptide Sequence Synthesis/logs/mcp-puppeteer-2025-07-29.log",
+            "hash": "ffe980fcea0fb7d27f5f6750563aee7ea2f76495534bbff4701002e4c2471ccf"
+        },
+        {
+            "date": 1753940970612,
+            "name": "/Users/chris/Desktop/Griffith Lab/Peptide Sequence Synthesis/logs/mcp-puppeteer-2025-07-31.log",
+            "hash": "ada19ae3c4ec575d27da2c5a1bca035c836d7f844ba154cf8977dbc1a09e3634"
+        }
+    ],
+    "hashType": "sha256"
+}

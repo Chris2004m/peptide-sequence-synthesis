@@ -40,14 +40,22 @@ def parse_fasta_sequences(fasta_path: Path) -> List[str]:
     return sequences
 
 def sample_peptides_from_fasta(fasta_path: Path, length: int, count: int) -> List[str]:
+    print(f"Parsing FASTA file: {fasta_path}")
     sequences = parse_fasta_sequences(fasta_path)
+    
+    print(f"Extracting {length}-mer peptides from {len(sequences)} proteins...")
     all_subseqs = set()  # Use set to automatically collapse duplicates
-    for seq in sequences:
+    
+    # Use progress bar for subsequence extraction
+    for seq in tqdm(sequences, desc="Processing proteins", unit="protein"):
         if len(seq) >= length:
             for i in range(len(seq) - length + 1):
                 all_subseqs.add(seq[i:i+length])
+    
     if not all_subseqs:
         raise ValueError(f"No subsequences of length {length} found in {fasta_path}")
+    
+    print(f"Found {len(all_subseqs)} unique {length}-mer peptides")
     
     # Convert set back to list for sampling
     unique_subseqs = list(all_subseqs)
@@ -58,6 +66,7 @@ def sample_peptides_from_fasta(fasta_path: Path, length: int, count: int) -> Lis
         return unique_subseqs
     
     # Sample without replacement
+    print(f"Sampling {count} peptides without replacement...")
     return random.sample(unique_subseqs, k=count)
 
 def generate_llm_peptides(length: int, count: int, model_name: str = "protgpt2", top_k: int = 950, top_p: float = 0.9, repetition_penalty: float = 1.2) -> List[str]:
@@ -332,9 +341,11 @@ def generate_fake_proteome(num_proteins: int, target_lengths: List[int], model_n
         sys.exit(1)
 
 def write_fasta(peptides: List[str], output_path: Path, prefix: str = "peptide"):
+    print(f"Writing {len(peptides)} peptides to {output_path}...")
     with open(output_path, 'w') as f:
-        for i, pep in enumerate(peptides, 1):
-            f.write(f">{prefix}_{i}\n{pep}\n")
+        for i, pep in enumerate(tqdm(peptides, desc="Writing peptides", unit="peptide")):
+            f.write(f">{prefix}_{i+1}\n{pep}\n")
+    print(f"✅ Successfully wrote {len(peptides)} peptides to {output_path}")
 
 def main():
     parser = argparse.ArgumentParser(description="Generate control peptides for neoantigen analysis.")
@@ -381,39 +392,50 @@ def main():
             sys.exit(1)
         peptides = sample_peptides_from_fasta(args.fasta_file, args.length, args.count)
     elif args.source == 'llm':
-        # Interactive workflow for LLM-based peptide generation
-        print(f"\nGenerating {args.count} peptides of length {args.length} using LLM approach...")
-        print("This approach generates a fake proteome first, then samples peptides from it.")
-        
-        # Check if user has existing proteome
-        has_existing = get_user_input("\nDo you have an existing ProtGPT2-generated proteome file? (y/n): ").lower().startswith('y')
-        
-        if has_existing:
-            proteome_path = get_existing_proteome_path()
-            print(f"Using existing proteome: {proteome_path}")
+        # Choose workflow based on the LLM model
+        if args.llm_model.lower() == 'protgpt2':
+            # Interactive proteome workflow for ProtGPT2 (to avoid M bias)
+            print(f"\nGenerating {args.count} peptides of length {args.length} using ProtGPT2 proteome approach...")
+            print("This approach generates a fake proteome first, then samples peptides from it.")
+        elif args.llm_model.lower() == 'esm2':
+            # Direct generation for ESM2 (no M bias issue)
+            print(f"\nGenerating {args.count} peptides of length {args.length} using ESM2 direct generation...")
+            peptides = generate_llm_peptides(args.length, args.count, args.llm_model, args.top_k, args.top_p, args.repetition_penalty)
         else:
-            # Ask if user wants to generate new proteome
-            generate_new = get_user_input("Would you like to generate a new fake proteome? (y/n): ").lower().startswith('y')
-            
-            if not generate_new:
-                print("Cannot proceed without a proteome. Exiting.")
-                sys.exit(1)
-            
-            # Configure proteome generation (no reference needed)
-            num_proteins, target_lengths = configure_proteome_generation()
-            
-            # Generate the fake proteome
-            fake_proteins = generate_fake_proteome(num_proteins, target_lengths, args.llm_model)
-            
-            # Save the generated proteome
-            proteome_output = Path(f'fake_proteome_{num_proteins}proteins.fasta')
-            write_fasta(fake_proteins, proteome_output, prefix="protein")
-            print(f"\nGenerated fake proteome saved to: {proteome_output}")
-            proteome_path = proteome_output
+            print(f"Error: Unsupported LLM model '{args.llm_model}'", file=sys.stderr)
+            sys.exit(1)
         
-        # Now sample peptides from the proteome using FASTA method
-        print(f"\nSampling {args.count} peptides from the proteome...")
-        peptides = sample_peptides_from_fasta(proteome_path, args.length, args.count)
+        # Only run interactive proteome workflow for ProtGPT2
+        if args.llm_model.lower() == 'protgpt2':
+            # Check if user has existing proteome
+            has_existing = get_user_input("\nDo you have an existing ProtGPT2-generated proteome file? (y/n): ").lower().startswith('y')
+            
+            if has_existing:
+                proteome_path = get_existing_proteome_path()
+                print(f"Using existing proteome: {proteome_path}")
+            else:
+                # Ask if user wants to generate new proteome
+                generate_new = get_user_input("Would you like to generate a new fake proteome? (y/n): ").lower().startswith('y')
+                
+                if not generate_new:
+                    print("Cannot proceed without a proteome. Exiting.")
+                    sys.exit(1)
+                
+                # Configure proteome generation (no reference needed)
+                num_proteins, target_lengths = configure_proteome_generation()
+                
+                # Generate the fake proteome
+                fake_proteins = generate_fake_proteome(num_proteins, target_lengths, args.llm_model)
+                
+                # Save the generated proteome
+                proteome_output = Path(f'fake_proteome_{num_proteins}proteins.fasta')
+                write_fasta(fake_proteins, proteome_output, prefix="protein")
+                print(f"\nGenerated fake proteome saved to: {proteome_output}")
+                proteome_path = proteome_output
+            
+            # Now sample peptides from the proteome using FASTA method
+            print(f"\nSampling {args.count} peptides from the proteome...")
+            peptides = sample_peptides_from_fasta(proteome_path, args.length, args.count)
     else:
         print(f"Unknown source: {args.source}", file=sys.stderr)
         sys.exit(1)
