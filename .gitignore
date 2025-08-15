@@ -1,9 +1,29 @@
 
+# IDE and tool-specific directories
+.claude/
+.codebuddy/
+.github/
+.idea/
+docs/
+statistics/
+
 # Data and output files
 *.fasta
 *.tsv
+Random-*
+control_peptides*
 
 # Python cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# MacOS
+.DS_Store
 
