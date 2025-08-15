@@ -6,6 +6,7 @@
 .idea/
 docs/
 statistics/
+logs/
 
 # Data and output files
 *.fasta
