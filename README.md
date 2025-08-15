@@ -13,6 +13,7 @@ A tool for generating reference peptide sets
 - **Command-line interface** for batch processing
 - **Progress indicators** for all generation methods
 - **Reproducible and documented**: All parameters and code are managed in git
+- **Biologically-Informed Peptide Mutation**: Mutate peptides using empirical substitution frequencies derived from ~1.6 million cancer mutations.
 
 ## Requirements
 
@@ -54,6 +55,40 @@ python scripts/generation/generate_control_peptides.py --source llm --llm_model 
 Generate 100 9-mer peptides using ESM2 (direct generation):
 ```bash
 python scripts/generation/generate_control_peptides.py --source llm --llm_model esm2 --length 9 --count 100 --output ESM2-9mer-100.fasta
+```
+
+### Peptide Mutation
+
+After generating any set of peptides, you will be prompted to optionally mutate them. You can also apply mutations directly or to an existing FASTA file.
+
+**1. Interactive Mutation (After Generation)**
+
+Run any generation command, and an interactive prompt will appear:
+
+```bash
+python scripts/generation/generate_control_peptides.py --source random --length 8 --count 10
+
+...
+
+🧬 Would you like to mutate these peptides? (y/n): y
+How many mutations per peptide? (default: 1): 2
+```
+This will create a new file, e.g., `control_peptides_mutated_2x.fasta`.
+
+**2. Direct Mutation (With Flags)**
+
+Use the `--mutate` and `--mutations` flags to apply mutations automatically:
+
+```bash
+python scripts/generation/generate_control_peptides.py --source random --length 9 --count 100 --mutate --mutations 1
+```
+
+**3. Mutate an Existing FASTA File**
+
+Use the `peptide_mutations.py` script to mutate an existing peptide set:
+
+```bash
+python scripts/generation/peptide_mutations.py --fasta_file path/to/your/peptides.fasta --mutations 1
 ```
 
 ## Docker Usage

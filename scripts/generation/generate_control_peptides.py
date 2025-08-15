@@ -8,6 +8,9 @@ from typing import List
 import numpy as np
 from tqdm import tqdm
 
+# Import mutation functionality
+from peptide_mutations import PeptideMutator
+
 AMINO_ACIDS = "ACDEFGHIKLMNPQRSTVWY"
 
 def generate_random_peptides(length: int, count: int) -> List[str]:
@@ -356,6 +359,10 @@ def main():
     parser.add_argument('--fasta_file', type=Path, help='Path to reference FASTA file (required if source is fasta)')
     parser.add_argument('--output', type=Path, default=Path('control_peptides.fasta'), help='Output FASTA file')
     parser.add_argument('--seed', type=int, help='Random seed for reproducibility (not used for llm models)')
+    
+    # Mutation arguments
+    parser.add_argument('--mutate', action='store_true', help='Apply mutations to generated peptides')
+    parser.add_argument('--mutations', type=int, default=1, help='Number of mutations to apply per peptide (default: 1)')
 
     parser.add_argument('--top_k', type=int, default=950, help='Top-k sampling for LLM')
     parser.add_argument('--top_p', type=float, default=0.9, help='Top-p (nucleus) sampling for LLM')
@@ -440,8 +447,53 @@ def main():
         print(f"Unknown source: {args.source}", file=sys.stderr)
         sys.exit(1)
 
+    # Save initial peptides
     write_fasta(peptides, args.output)
     print(f"Wrote {len(peptides)} peptides to {args.output}")
+    
+    # Handle mutations (either from command line flag or interactive prompt)
+    should_mutate = args.mutate
+    mutations_count = args.mutations
+    
+    # If not specified via command line, ask interactively
+    if not args.mutate:
+        try:
+            response = input("\n🧬 Would you like to mutate these peptides? (y/n): ").strip().lower()
+            if response.startswith('y'):
+                should_mutate = True
+                while True:
+                    try:
+                        mutations_count = int(input("How many mutations per peptide? (default: 1): ").strip() or "1")
+                        if mutations_count > 0:
+                            break
+                        else:
+                            print("Please enter a positive number.")
+                    except ValueError:
+                        print("Please enter a valid number.")
+        except (EOFError, KeyboardInterrupt):
+            print("\nNo mutations applied.")
+            should_mutate = False
+    
+    # Apply mutations if requested
+    if should_mutate:
+        print(f"\n🧬 Applying {mutations_count} mutation(s) per peptide...")
+        
+        # Initialize the mutator (no arguments needed - uses hardcoded data)
+        mutator = PeptideMutator()
+        
+        # Apply mutations to all peptides
+        mutated_peptides = mutator.mutate_peptide_list(peptides, mutations_count)
+        
+        # Update output filename to indicate mutations
+        output_path = args.output
+        if not str(output_path).endswith('_mutated.fasta'):
+            # Insert 'mutated' before the file extension
+            stem = output_path.stem
+            suffix = output_path.suffix
+            output_path = output_path.with_name(f"{stem}_mutated_{mutations_count}x{suffix}")
+        
+        write_fasta(mutated_peptides, output_path, prefix=f"{args.source}_mutated")
+        print(f"✅ Mutated peptides saved to: {output_path}")
 
 if __name__ == "__main__":
     main() 
