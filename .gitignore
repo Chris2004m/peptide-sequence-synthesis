@@ -27,4 +27,5 @@ ENV/
 
 # MacOS
 .DS_Store
+__MACOSX
 
