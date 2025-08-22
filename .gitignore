@@ -11,8 +11,10 @@ logs/
 # Data and output files
 *.fasta
 *.tsv
+*.faa
 Random-*
 control_peptides*
+data/protein.faa
 
 # Python cache
 __pycache__/

@@ -14,6 +14,7 @@ A tool for generating reference peptide sets
 - **Progress indicators** for all generation methods
 - **Reproducible and documented**: All parameters and code are managed in git
 - **Biologically-Informed Peptide Mutation**: Mutate peptides using empirical substitution frequencies derived from ~1.6 million cancer mutations.
+- **Amino Acid Validation**: Automatically filters out peptides containing non-standard amino acids (U, B, Z, X, etc.) to ensure compatibility with downstream analysis tools.
 
 ## Requirements
 

@@ -13,6 +13,10 @@ from peptide_mutations import PeptideMutator
 
 AMINO_ACIDS = "ACDEFGHIKLMNPQRSTVWY"
 
+def is_valid_peptide(peptide: str) -> bool:
+    """Check if peptide contains only standard amino acids."""
+    return all(aa in AMINO_ACIDS for aa in peptide.upper())
+
 def generate_random_peptides(length: int, count: int) -> List[str]:
     return ["".join(random.choices(AMINO_ACIDS, k=length)) for _ in range(count)]
 
@@ -48,24 +52,32 @@ def sample_peptides_from_fasta(fasta_path: Path, length: int, count: int) -> Lis
     
     print(f"Extracting {length}-mer peptides from {len(sequences)} proteins...")
     all_subseqs = set()  # Use set to automatically collapse duplicates
+    invalid_peptides = 0
     
     # Use progress bar for subsequence extraction
     for seq in tqdm(sequences, desc="Processing proteins", unit="protein"):
         if len(seq) >= length:
             for i in range(len(seq) - length + 1):
-                all_subseqs.add(seq[i:i+length])
+                peptide = seq[i:i+length]
+                if is_valid_peptide(peptide):
+                    all_subseqs.add(peptide)
+                else:
+                    invalid_peptides += 1
     
     if not all_subseqs:
-        raise ValueError(f"No subsequences of length {length} found in {fasta_path}")
+        raise ValueError(f"No valid subsequences of length {length} found in {fasta_path}")
     
-    print(f"Found {len(all_subseqs)} unique {length}-mer peptides")
+    if invalid_peptides > 0:
+        print(f"Filtered out {invalid_peptides} peptides with non-standard amino acids")
+    
+    print(f"Found {len(all_subseqs)} valid unique {length}-mer peptides")
     
     # Convert set back to list for sampling
     unique_subseqs = list(all_subseqs)
     
     # Ensure sampling without replacement - if not enough unique peptides, inform user
     if count > len(unique_subseqs):
-        print(f"Warning: Requested {count} peptides, but only {len(unique_subseqs)} unique peptides available. Returning all {len(unique_subseqs)} unique peptides.", file=sys.stderr)
+        print(f"Warning: Requested {count} peptides, but only {len(unique_subseqs)} valid unique peptides available. Returning all {len(unique_subseqs)} valid peptides.", file=sys.stderr)
         return unique_subseqs
     
     # Sample without replacement
@@ -115,7 +127,7 @@ def generate_llm_peptides(length: int, count: int, model_name: str = "protgpt2",
                     continue
                 # Remove whitespace and newlines, keep only valid amino acids
                 pep = ''.join([c for c in gen_text if c in AMINO_ACIDS])
-                if len(pep) == length:
+                if len(pep) == length and is_valid_peptide(pep):
                     peptides.append(pep)
                     # Real-time progress output every 100 accepted peptides or at the end
                     if len(peptides) % 100 == 0 or len(peptides) == count:
@@ -199,7 +211,7 @@ def generate_llm_peptides(length: int, count: int, model_name: str = "protgpt2",
                         else:
                             final_peptide += "".join(random.choices(AMINO_ACIDS, k=length - len(final_peptide)))
 
-                        if len(final_peptide) == length:
+                        if len(final_peptide) == length and is_valid_peptide(final_peptide):
                             peptides.append(final_peptide)
                             if len(peptides) % 100 == 0 or len(peptides) == count:
                                 print(f"[LLM] Generated {len(peptides)}/{count} valid peptides...", flush=True)
