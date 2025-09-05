@@ -7,4 +7,5 @@ awk 'NR==FNR {rank[$0]=++i; next}
     ranked_classI_alleles_with_data.txt pvacbind_valid_classI_alleles.txt \
   | sort -n | cut -d' ' -f2- > pvacbind_valid_classI_alleles_ordered.txt
 
+head -n 3 pvacbind_valid_classI_alleles_ordered.txt > pvacbind_valid_classI_alleles_ordered_first-3.txt
 
